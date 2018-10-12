@@ -1,4 +1,4 @@
-var CryptoJS = require("crypto-js");
+ var CryptoJS = require("crypto-js");
 var express = require("express");
 var bodyParser = require('body-parser');
 var WebSocket = require("ws");
@@ -47,7 +47,7 @@ var initHttpServer = () => {
 
         res.send(JSON.stringify(block));
 
-    }); 
+    });
 
     app.get('/', function(req, res){ res.sendFile(path.join(__dirname+'/index.html'))});
     app.get('/blocks', (req, res) => res.send(JSON.stringify(blockchain)));
@@ -57,14 +57,18 @@ var initHttpServer = () => {
         broadcast(responseLatestMsg());
         console.log('block added: ' + JSON.stringify(newBlock));
         res.sendFile(path.join(__dirname+'/public/index.html'))
+
     });
+    app.post('/findBlock', (req,res) =>{
+    	 res.sendFile(path.join(__dirname+'/public/index.html'))
+    })
     app.get('/peers', (req, res) => {
         res.send(sockets.map(s => s._socket.remoteAddress + ':' + s._socket.remotePort));
     });
     app.post('/addPeer', (req, res) => {
         connectToPeers([req.body.peer]);
-        res.send();
-    });
+        res.sendFile(path.join(__dirname+'/public/index.html'))
+  });
     app.listen(http_port, () => console.log('Listening http on port: ' + http_port));
 };
 
@@ -120,12 +124,12 @@ var generateNextBlock = (blockData) => {
 };
 var getBlock = (hash) =>{ var f=0;
     for(var i=0;i<blockchain.length;i++)
-{if(blockchain[i].data===hash)
+{if(blockchain[i].id===hash)
     {
             return blockchain[i];
             f=1;
 
-            
+
     }
 } if(f===0)
     {console.log("block not found");
