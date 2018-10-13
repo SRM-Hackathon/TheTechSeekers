@@ -3,6 +3,7 @@ var express = require("express");
 var bodyParser = require('body-parser');
 var WebSocket = require("ws");
 var path=require("path");
+
 var urlencodedparser=bodyParser.urlencoded({extended:true});
 
 var http_port = process.env.HTTP_PORT || 8080;
@@ -10,11 +11,12 @@ var p2p_port = process.env.P2P_PORT || 6001;
 var initialPeers = process.env.PEERS ? process.env.PEERS.split(',') : [];
 
 class Block {
-    constructor(index, previousHash, timestamp, data, hash) {
+    constructor(index, previousHash, timestamp,status,data, hash) {
         this.index = index;
         this.previousHash = previousHash.toString();
         this.timestamp = timestamp;
         this.data = data;
+        this.status=status;
         var fields=data.split(/ /);
         this.name=fields[0];
         this.id=fields[1];
@@ -30,7 +32,7 @@ var MessageType = {
 };
 
 var getGenesisBlock = () => {
-    return new Block(0, "0", 1465154705, "genesis block", "816534932c2b7154836da6afc367695e6337db8a921823784c14378abed4f7d7");
+    return new Block(0, "0", 1465154705,"primary","genesis block", "816534932c2b7154836da6afc367695e6337db8a921823784c14378abed4f7d7");
 };
 
 var blockchain = [getGenesisBlock()];
@@ -52,21 +54,24 @@ var initHttpServer = () => {
 
     app.get('/', function(req, res){ res.sendFile(path.join(__dirname+'/index.html'))});
     app.get('/blocks', (req, res)=> {
+    	console.log(JSON.stringify(blockchain));
     	res.render('pages/index3', {blockchain: blockchain})});
     app.post('/',urlencodedparser, (req, res) => {
         var newBlock = generateNextBlock(req.body.name+' '+req.body.id);
         addBlock(newBlock);
         broadcast(responseLatestMsg());
         console.log('block added: ' + JSON.stringify(newBlock));
-        res.sendFile(path.join(__dirname+'/public/index.html'))
+        res.sendFile(path.join(__dirname+'/public/index.html'))}
 
-    });
+    );
     app.post('/findBlock', (req,res) =>{
     	var block=getBlock(req.body.hash);
     	var name=block.name;
     	var id=block.id;
     	var ts=block.timestamp;
-    	 res.render('pages/index1',{name:name,id:id,ts:ts})
+    	var stat=block.status;
+    	console.log(stat);
+    	 res.render('pages/index1',{name:name,id:id,ts:ts,stat:stat})
     })
     app.get('/peers', (req, res) => {
         res.send(sockets.map(s => s._socket.remoteAddress + ':' + s._socket.remotePort));
@@ -128,11 +133,23 @@ var initErrorHandler = (ws) => {
 
 
 var generateNextBlock = (blockData) => {
+	var field=blockData.split(/ /);
+	var name=field[0];
+	var id=field[1];
+	var status="primary";
+	for(var i=blockchain.length-1 ;i > -1 ; i--)
+	{
+			if(blockchain[i].id===id)
+				{blockchain[i].status="old";
+				status="new";
+				break;}
+
+	}
     var previousBlock = getLatestBlock();
     var nextIndex = previousBlock.index + 1;
     var nextTimestamp = new Date().getTime() / 1000;
     var nextHash = calculateHash(nextIndex, previousBlock.hash, nextTimestamp, blockData);
-    return new Block(nextIndex, previousBlock.hash, nextTimestamp, blockData, nextHash);
+    return new Block(nextIndex, previousBlock.hash, nextTimestamp,status, blockData, nextHash);
 };
 var getBlock = (hash) =>{ var f=0;
     for(var i=0;i<blockchain.length;i++)
