@@ -1,4 +1,4 @@
- var CryptoJS = require("crypto-js");
+var CryptoJS = require("crypto-js");
 var express = require("express");
 var bodyParser = require('body-parser');
 var WebSocket = require("ws");
@@ -38,6 +38,7 @@ var blockchain = [getGenesisBlock()];
 
 var initHttpServer = () => {
     var app = express();
+    app.set('view engine','ejs')
     app.use(bodyParser.json());
       app.use(bodyParser.urlencoded({extended: false}));
     app.use(express.static(path.join(__dirname, '/public')));
@@ -47,10 +48,11 @@ var initHttpServer = () => {
 
         res.send(JSON.stringify(block));
 
-    });
+    }); 
 
     app.get('/', function(req, res){ res.sendFile(path.join(__dirname+'/index.html'))});
-    app.get('/blocks', (req, res) => res.send(JSON.stringify(blockchain)));
+    app.get('/blocks', (req, res)=> {
+    	res.render('pages/index3', {blockchain: blockchain})});
     app.post('/',urlencodedparser, (req, res) => {
         var newBlock = generateNextBlock(req.body.name+' '+req.body.id);
         addBlock(newBlock);
@@ -60,15 +62,25 @@ var initHttpServer = () => {
 
     });
     app.post('/findBlock', (req,res) =>{
-    	 res.sendFile(path.join(__dirname+'/public/index.html'))
+    	var block=getBlock(req.body.hash);
+    	var name=block.name;
+    	var id=block.id;
+    	var ts=block.timestamp;
+    	 res.render('pages/index1',{name:name,id:id,ts:ts})
     })
     app.get('/peers', (req, res) => {
         res.send(sockets.map(s => s._socket.remoteAddress + ':' + s._socket.remotePort));
     });
     app.post('/addPeer', (req, res) => {
         connectToPeers([req.body.peer]);
-        res.sendFile(path.join(__dirname+'/public/index.html'))
-  });
+        console.log("peer added");
+        console.log(req.body.peer);
+        var ms="Peer Added";
+        res.render('pages/index',{peer:ms});
+        
+
+    
+    });
     app.listen(http_port, () => console.log('Listening http on port: ' + http_port));
 };
 
@@ -129,7 +141,7 @@ var getBlock = (hash) =>{ var f=0;
             return blockchain[i];
             f=1;
 
-
+            
     }
 } if(f===0)
     {console.log("block not found");
